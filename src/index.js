@@ -7,7 +7,25 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 const app = new Hono();
 
 app.get('/', async (c) => {
-	// ... Existing code
+	const question = c.req.query('text') || "What is the square root of 9?"
+
+	const embeddings = await c.env.AI.run('@cf/baai/bge-base-en-v1.5', { text: question })
+	const vectors = embeddings.data[0]
+
+	const vectorQuery = await c.env.VECTOR_INDEX.query(vectors, { topK: 1 });
+	let vecId;
+	if (vectorQuery.matches && vectorQuery.matches.length > 0 && vectorQuery.matches[0]) {
+		vecId = vectorQuery.matches[0].id;
+	} else {
+		console.log("No matching vector found or vectorQuery.matches is empty");
+	}
+
+	let notes = []
+	if (vecId) {
+		const query = `SELECT * FROM notes WHERE id = ?`
+		const { results } = await c.env.DB.prepare(query).bind(vecId).all()
+		if (results) notes = results.map(vec => vec.text)
+	}
 	const systemPrompt = `When answering the question or responding, use the context provided, if it is provided and relevant.`
 
 	let modelUsed = ""
