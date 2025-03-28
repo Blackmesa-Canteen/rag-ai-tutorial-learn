@@ -26,6 +26,10 @@ app.get('/', async (c) => {
 		const { results } = await c.env.DB.prepare(query).bind(vecId).all()
 		if (results) notes = results.map(vec => vec.text)
 	}
+
+	const contextMessage = notes.length
+		? `Context:\n${notes.map(note => `- ${note}`).join("\n")}`
+		: ""
 	const systemPrompt = `When answering the question or responding, use the context provided, if it is provided and relevant.`
 
 	let modelUsed = ""
